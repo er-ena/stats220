@@ -1,0 +1,204 @@
+---
+title: My dynamic report
+output: html_fragment
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, message=FALSE, warning=FALSE, error=FALSE)
+library(tidyverse)
+```
+
+```{css}
+body {background-color: #FCF7F8}
+h2 {color: #804000; background-color: white; text-align: center; padding: 20px}
+h3 {text-align: center}
+p {text-align: center}
+```
+
+```{r}
+logged_data <- read_csv(
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRg7nFZ1M_DERzhhya2edsEYDaRXLaf77V2Oo1NbdVUw5BZSlwxv7qCOl2fcMXb0s9Lwu_kSEuNHKuU/pub?gid=996593738&single=true&output=csv"
+) %>% rename(morning_or_afternoon = 2,
+             temperature = 3, 
+             drink_type = 4,
+             hot_or_iced = 5, 
+             coffee_type = 6, 
+             tea_type = 7) 
+
+latest_data <- logged_data %>%
+  mutate(temp_factor = case_when(
+    temperature < 10 ~ "< 10",
+    temperature < 12 ~ "10-12",
+    temperature < 14 ~ "12-14",
+    temperature < 16 ~ "14-16",
+    temperature < 18 ~ "16-18",
+    temperature < 20 ~ "18-20",
+    temperature < 22 ~ "20-22",
+    temperature < 24 ~ "22-24",
+    temperature < 26 ~ "24-26",
+    temperature < 28 ~ "26-28",
+    temperature < 30 ~ "28-30",
+    TRUE ~ "> 30"))
+```
+
+## Overall summary of what our customers have ordered, categorised by the temperature!
+
+```{r}
+latest_data %>%
+  ggplot() + 
+  geom_bar((aes(y = temp_factor,
+                fill = drink_type))) +
+  scale_fill_brewer(palette = "PuOr") + 
+  labs(y = "Temperature (in degrees Celsius)",
+       fill = "Drink Type")
+```
+
+## Does the temperature influence whether our customers get hot or iced drinks?
+
+```{r}
+latest_data %>%
+  ggplot() + 
+  geom_bar((aes(y = temp_factor,
+                fill = hot_or_iced))) + 
+  theme_bw() +
+  labs(y = "Temperature (in degrees Celsius)", 
+       fill = "Hot or Iced")
+```
+
+```{r}
+temp_over_20 <- latest_data$temperature >= 20
+temp_not_over_20 <- latest_data$temperature < 20
+
+over_20 <- length(latest_data$hot_or_iced[temp_over_20])
+under_20 <- length(latest_data$hot_or_iced[temp_not_over_20])
+
+hot_drinks_over_20 <- sum(latest_data$hot_or_iced[temp_over_20] == "Hot")
+iced_drinks_over_20 <- sum(latest_data$hot_or_iced[temp_over_20] == "Iced")
+
+prop_hot_drinks_over_20 <- round(hot_drinks_over_20/over_20, 2) * 100
+prop_iced_drinks_over_20 <- round(iced_drinks_over_20/over_20, 2) * 100
+
+hot_drinks_under_20 <- sum(latest_data$hot_or_iced[temp_not_over_20] == "Hot")
+iced_drinks_under_20 <- sum(latest_data$hot_or_iced[temp_not_over_20] == "Iced")
+
+prop_hot_drinks_under_20 <- round(hot_drinks_under_20/under_20, 2) * 100
+prop_iced_drinks_under_20 <- round(iced_drinks_under_20/under_20, 2) * 100
+```
+
+This graph tracks the number of customers who get hot drinks or iced drinks, grouped by the outside temperature of when the customer ordered the drink.
+
+When the temperature is **under** 20 degrees Celsius, `r prop_iced_drinks_under_20`% of customers order iced drinks and `r prop_hot_drinks_under_20`% of customers order hot drinks.
+
+When the temperature **is/over** 20 degrees Celsius, `r prop_iced_drinks_over_20`% of customers order iced drinks and `r prop_hot_drinks_over_20`% of customers order hot drinks.
+
+## Does the period of day impact customers choices of teas?
+
+### "Other" indicates that the customer did not order a tea.
+
+```{r}
+non_tea_orders <- is.na(latest_data$tea_type)
+latest_data$tea_type[non_tea_orders] <- "Other"
+
+latest_data %>%
+  ggplot() +
+  geom_bar(aes(y = tea_type,
+               fill = morning_or_afternoon)) +
+  theme_bw() +
+  labs(y = "Tea Type", 
+       fill = "Morning or Afternoon")
+```
+
+```{r}
+cumulative <- as.numeric(latest_data$tea_type %>% length())
+other_orders <- as.numeric(sum(latest_data$tea_type == "Other"))
+tea_orders <- cumulative - other_orders
+
+traditional_black <- as.numeric(sum(latest_data$tea_type == "Traditional Black"))
+flavoured_black <- as.numeric(sum(latest_data$tea_type == "Flavoured Black"))
+earl_grey <- as.numeric(sum(latest_data$tea_type == "Earl Grey"))
+traditional_green <- as.numeric(sum(latest_data$tea_type == "Traditional Green"))
+flavoured_green <- as.numeric(sum(latest_data$tea_type == "Flavoured Green"))
+herbal <- as.numeric(sum(latest_data$tea_type == "Herbal"))
+fruit <- as.numeric(sum(latest_data$tea_type == "Fruit"))
+white <- as.numeric(sum(latest_data$tea_type == "White"))
+oolong <- as.numeric(sum(latest_data$tea_type == "Oolong"))
+organic <- as.numeric(sum(latest_data$tea_type == "Organic"))
+decaf <- as.numeric(sum(latest_data$tea_type == "Decaffeinated"))
+artisan <- as.numeric(sum(latest_data$tea_type == "Artisan"))
+```
+
+```{r}
+black <- latest_data$tea_type == "Traditional Black" 
+morning_black <- sum(latest_data$morning_or_afternoon[black] == "Morning")
+afternoon_black <- sum(latest_data$morning_or_afternoon[black] == "Afternoon")
+
+black2 <- latest_data$tea_type == "Flavoured Black" 
+morning_black2 <- sum(latest_data$morning_or_afternoon[black2] == "Morning")
+afternoon_black2 <- sum(latest_data$morning_or_afternoon[black2] == "Afternoon")
+
+earl_grey2 <- latest_data$tea_type == "Earl Grey"
+morning_earl_grey2 <- sum(latest_data$morning_or_afternoon[earl_grey2] == "Morning")
+afternoon_earl_grey2 <- sum(latest_data$morning_or_afternoon[earl_grey2] == "Afternoon")
+
+green <- latest_data$tea_type == "Traditional Green"
+morning_green <- sum(latest_data$morning_or_afternoon[green] == "Morning")
+afternoon_green <- sum(latest_data$morning_or_afternoon[green] == "Afternoon")
+
+green2 <- latest_data$tea_type == "Flavoured Green"
+morning_green2 <- sum(latest_data$morning_or_afternoon[green2] == "Morning")
+afternoon_green2 <- sum(latest_data$morning_or_afternoon[green2] == "Afternoon")
+
+herbal_2 <- latest_data$tea_type == "Herbal"
+morning_herbal <- sum(latest_data$morning_or_afternoon[herbal_2] == "Morning")
+afternoon_herbal <- sum(latest_data$morning_or_afternoon[herbal_2] == "Afternoon")
+
+fruit_2 <- latest_data$tea_type == "Fruit"
+morning_fruit <- sum(latest_data$morning_or_afternoon[fruit_2] == "Morning")
+afternoon_fruit <- sum(latest_data$morning_or_afternoon[fruit_2] == "Afternoon")
+
+white_2 <- latest_data$tea_type == "White"
+morning_white <- sum(latest_data$morning_or_afternoon[white_2] == "Morning")
+afternoon_white <- sum(latest_data$morning_or_afternoon[white_2] == "Afternoon")
+
+oolong_2 <- latest_data$tea_type == "Oolong"
+morning_oolong <- sum(latest_data$morning_or_afternoon[oolong_2] == "Morning")
+afternoon_oolong <- sum(latest_data$morning_or_afternoon[oolong_2] == "Afternoon")
+
+organic_2 <- latest_data$tea_type == "Organic"
+morning_organic <- sum(latest_data$morning_or_afternoon[organic_2] == "Morning")
+afternoon_organic <- sum(latest_data$morning_or_afternoon[organic_2] == "Afternoon")
+
+decaf_2 <- latest_data$tea_type == "Decaffeinated"
+morning_decaf <- sum(latest_data$morning_or_afternoon[decaf_2] == "Morning")
+afternoon_decaf <- sum(latest_data$morning_or_afternoon[decaf_2] == "Afternoon")
+
+artisan_2 <- latest_data$tea_type == "Artisan"
+morning_artisan <- sum(latest_data$morning_or_afternoon[artisan_2] == "Morning")
+afternoon_artisan <- sum(latest_data$morning_or_afternoon[artisan_2] == "Afternoon")
+```
+
+Overall, `r tea_orders` customers out of `r cumulative` customers ordered tea.
+
+`r traditional_black` customers ordered **traditional black tea**, where `r morning_black` customers ordered it in the morning and `r afternoon_black` customers ordered it in the afternoon.
+
+`r flavoured_black` customers ordered **flavoured black tea**, where `r morning_black2` customers ordered it in the morning and `r afternoon_black2` customers ordered it in the afternoon.
+
+`r earl_grey` customers ordered **earl grey tea**, where `r morning_earl_grey2` customers ordered it in the morning and `r afternoon_earl_grey2` customers ordered it in the afternoon.
+
+`r traditional_green` customers ordered **traditional green tea**, where `r morning_green` customers ordered it in the morning and `r afternoon_green` customers ordered it in the afternoon.
+
+`r flavoured_green` customers ordered **flavoured green tea**, where `r morning_green2` customers ordered it in the morning and `r afternoon_green2` customers ordered it in the afternoon.
+
+`r herbal` customers ordered **herbal tea**, where `r morning_herbal` customers ordered it in the morning and `r afternoon_herbal` customers ordered it in the afternoon.
+
+`r fruit` customers ordered **fruit tea**, where `r morning_fruit` customers ordered it in the morning and `r afternoon_fruit` customers ordered it in the afternoon.
+
+`r white` customers ordered **white tea**, where `r morning_white` customers ordered it in the morning and `r afternoon_white` customers ordered it in the afternoon.
+
+`r oolong` customers ordered **oolong tea**, where `r morning_oolong` customers ordered it in the morning and `r afternoon_oolong` customers ordered it in the afternoon.
+
+`r organic` customers ordered **organic tea**, where `r morning_organic` customers ordered it in the morning and `r afternoon_organic` customers ordered it in the afternoon.
+
+`r decaf` customers ordered **decaf tea**, where `r morning_decaf` customers ordered it in the morning and `r afternoon_decaf` customers ordered it in the afternoon.
+
+`r artisan` customers ordered **artisan tea**, where `r morning_artisan` customers ordered it in the morning and `r afternoon_artisan` customers ordered it in the afternoon.
